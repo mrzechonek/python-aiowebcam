@@ -1,0 +1,66 @@
+<html>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            console.log('loaded');
+
+            let startStream = function(source, header) {
+                let sock = new WebSocket('ws://localhost:8080/api/v1/video/out');
+                let first = true;
+
+                sock.onopen = function() {
+                    console.log('Connected')
+                };
+
+                sock.onmessage = function(event) {
+                    if (!header && first) {
+                        first = false;
+                        return;
+                    }
+                    let reader = new FileReader();
+
+                    reader.onload = function(event) {
+                        let buffer = event.target.result;
+
+                        source.appendBuffer(buffer);
+                    };
+                    reader.readAsArrayBuffer(event.data);
+                };
+
+                sock.onclose = function(event) {
+                    console.log('Disconnected');
+                }
+
+                sock.onerror = function(event) {
+                    console.log('Error');
+                };
+            };
+
+            let media = new MediaSource();
+
+            let video = document.querySelector('video');
+            video.src = window.URL.createObjectURL(media);
+
+            media.addEventListener(
+                'sourceopen',
+                function(e) {
+                    let source = media.addSourceBuffer('video/webm; codecs="vp8"');
+                    source.mode = 'sequence';
+
+                    source.addEventListener('updateend', function (event) {
+                        video.play();
+                    });
+
+                    startStream(source, true);
+
+                },
+                false
+            );
+        });
+
+    </script>
+
+    <body>
+        <video width="1280" height="720"></video>
+
+    </body>
+</html>
